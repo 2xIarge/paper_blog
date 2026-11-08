@@ -1,0 +1,482 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>拾纸集 · 个人博客</title>
+<style>
+  :root {
+    --paper: #f6efe0;
+    --paper-edge: #d9cfb8;
+    --ink: #3b3428;
+    --ink-soft: #6b5f4a;
+    --faint: #9a8c72;
+    --cloth: #6d3f26;
+    --seal: #a33a2a;
+    --gold: #d8b46a;
+    --page-w: 720px;
+    --page-h: 900px;
+    --spine-w: 46px;
+    --ease: cubic-bezier(.3,.7,.3,1);
+    --noise: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/></svg>");
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: "Songti SC", "Noto Serif SC", "SimSun", Georgia, serif;
+    color: var(--ink);
+    background:
+      radial-gradient(130% 100% at 50% 40%, rgba(0,0,0,0) 55%, rgba(20,10,0,.30) 100%),
+      radial-gradient(90% 70% at 50% -10%, rgba(255,236,200,.30), rgba(0,0,0,0) 60%),
+      radial-gradient(50% 36% at 16% 80%, rgba(40,22,8,.20), rgba(0,0,0,0) 70%),
+      radial-gradient(36% 26% at 84% 26%, rgba(40,22,8,.14), rgba(0,0,0,0) 70%),
+      repeating-linear-gradient(90deg, rgba(0,0,0,.12) 0 2px, rgba(0,0,0,0) 2px 160px),
+      repeating-linear-gradient(90deg, rgba(255,255,255,.03) 0 1px, rgba(0,0,0,0) 1px 7px),
+      repeating-linear-gradient(0deg, rgba(0,0,0,.03) 0 2px, rgba(0,0,0,0) 2px 6px),
+      linear-gradient(160deg, #9a7a55, #7d5f40 55%, #6a4f34);
+    background-attachment: fixed;
+    height: 100vh; overflow: hidden;
+    display: grid; place-items: center;
+    padding: 16px;
+  }
+
+  .scene { position: relative; width: calc(var(--page-w) * 2); margin: 0 auto;
+    transform-origin: center center; }
+  .marginalia { position: absolute; inset: 0; pointer-events: none; }
+  .marginalia > * { position: absolute; }
+  body.reading .marginalia { display: none; }
+  .scrap { background: var(--paper); background-image: var(--noise);
+    padding: 14px 16px; border-radius: 2px; box-shadow: 0 8px 18px rgba(20,10,0,.3);
+    font-family: "Kaiti SC", "STKaiti", "KaiTi", cursive; color: var(--ink-soft);
+    font-size: 14px; line-height: 1.8; }
+  .note1 { left: -180px; top: 120px; width: 200px; transform: rotate(-4deg); }
+  .note2 { right: -180px; top: 160px; width: 200px; transform: rotate(3deg); }
+  .bookplate { right: -160px; top: 440px; width: 150px; text-align: center;
+    background: var(--paper); background-image: var(--noise);
+    border: 3px double var(--ink-soft); padding: 16px 10px; font-size: 13px;
+    letter-spacing: .2em; color: var(--ink-soft); transform: rotate(-2deg);
+    box-shadow: 0 8px 18px rgba(20,10,0,.3); line-height: 2; }
+  .coffee { left: -150px; top: 430px; width: 110px; height: 110px; border-radius: 50%;
+    border: 7px solid rgba(90,55,25,.22);
+    box-shadow: 0 0 0 2px rgba(90,55,25,.08), inset 0 0 0 3px rgba(90,55,25,.10);
+    transform: rotate(-8deg) scaleX(1.05); }
+  .pencil { left: -170px; top: 620px; width: 190px; height: 10px; border-radius: 5px;
+    background: linear-gradient(90deg, #d9a441 0 78%, #e8c9a0 78% 90%, #4a3a2a 90%);
+    box-shadow: 0 4px 8px rgba(20,10,0,.35); transform: rotate(7deg); }
+
+  /* ---------- 书体：刚体模型，页尺寸恒定 ---------- */
+  .stage {
+    position: relative;
+    width: calc(var(--page-w) * 2);
+    height: var(--page-h);
+    perspective: 2400px;
+    transform: translateX(calc(var(--page-w) / -2 + var(--spine-w) / 4));
+    transition: transform 1.1s var(--ease);
+    filter: drop-shadow(0 26px 50px rgba(20,10,0,.45));
+  }
+  .stage.open { transform: translateX(0); }
+  .stage.closing { transform: translateX(calc(var(--page-w) / -2 + var(--spine-w) / 4)); }
+
+  .base-left {
+    position: absolute; left: 0; top: 0; height: 100%;
+    width: var(--page-w);
+    background: var(--paper); background-image: var(--noise);
+    border-radius: 5px 0 0 5px;
+    box-shadow: inset -14px 0 26px -14px rgba(70,45,15,.35);
+    clip-path: inset(0 0 0 100%);
+    transition: clip-path .5s var(--ease) .6s;
+  }
+  .stage.open .base-left { clip-path: inset(0 0 0 0); }
+  .stage.closing .base-left { clip-path: inset(0 0 0 100%); transition: clip-path .4s var(--ease); }
+
+  .slot-right {
+    position: absolute; top: 0; height: 100%; width: var(--page-w);
+    left: var(--page-w);
+    background: var(--paper); background-image: var(--noise);
+    border-radius: 0 5px 5px 0;
+    box-shadow: inset 14px 0 26px -14px rgba(70,45,15,.4);
+    z-index: 1;
+  }
+  .page-inner::-webkit-scrollbar { width: 8px; }
+  .page-inner::-webkit-scrollbar-thumb { background: var(--paper-edge); border-radius: 4px; }
+  .page-inner::-webkit-scrollbar-track { background: transparent; }
+
+  .leaf {
+    position: absolute; top: 0; height: 100%; width: var(--page-w);
+    left: var(--page-w);
+    transform-origin: left center;
+    transform-style: preserve-3d;
+    transform: rotateY(0deg);
+    z-index: 3;
+  }
+  .stage.open .leaf { animation: paper-open 1.1s forwards; }
+  .stage.closing .leaf { animation: paper-close 1.1s forwards; }
+  .face {
+    position: absolute; inset: 0;
+    backface-visibility: hidden; -webkit-backface-visibility: hidden;
+    background: var(--paper); background-image: var(--noise);
+  }
+  .face.front { border-radius: 0 5px 5px 0; box-shadow: inset 14px 0 26px -14px rgba(70,45,15,.4); }
+  .face.back { transform: rotateY(180deg); border-radius: 5px 0 0 5px; box-shadow: inset -14px 0 26px -14px rgba(70,45,15,.4); }
+  .face.front::after, .face.back::after {
+    content: ""; position: absolute; top: 0; bottom: 0; right: 0; width: 15px;
+    background:
+      repeating-linear-gradient(to right, rgba(120,100,70,.28) 0 1px, rgba(0,0,0,0) 1px 2px),
+      repeating-linear-gradient(to right, rgba(255,255,255,.55) 0 1px, rgba(0,0,0,0) 1px 4px),
+      repeating-linear-gradient(to right, rgba(120,100,70,.12) 0 1px, rgba(0,0,0,0) 1px 7px),
+      linear-gradient(to right, #f3ecd9 0%, #e7ddc6 55%, #d6cab0 100%);
+    box-shadow: inset 0 0 2px rgba(0,0,0,.15), 2px 0 5px rgba(0,0,0,.18);
+    border-radius: 0 5px 5px 0;
+  }
+  .stage.open::after {
+    content: ""; position: absolute; top: 0; bottom: 0; right: 0; width: 15px; z-index: 2;
+    background:
+      repeating-linear-gradient(to right, rgba(120,100,70,.28) 0 1px, rgba(0,0,0,0) 1px 2px),
+      repeating-linear-gradient(to right, rgba(255,255,255,.55) 0 1px, rgba(0,0,0,0) 1px 4px),
+      repeating-linear-gradient(to right, rgba(120,100,70,.12) 0 1px, rgba(0,0,0,0) 1px 7px),
+      linear-gradient(to right, #f3ecd9 0%, #e7ddc6 55%, #d6cab0 100%);
+    box-shadow: inset 0 0 2px rgba(0,0,0,.15), 2px 0 5px rgba(0,0,0,.18);
+    border-radius: 0 5px 5px 0;
+  }
+
+  .spine-overlay {
+    position: absolute; top: 0; height: 100%; width: var(--spine-w);
+    left: calc(var(--page-w) - var(--spine-w) / 2);
+    background: linear-gradient(90deg, #59321d, var(--cloth) 40%, #7c4a2d);
+    box-shadow: inset 0 0 8px rgba(0,0,0,.35), inset 2px 0 4px rgba(255,255,255,.12);
+    display: grid; place-items: center;
+    z-index: 5; pointer-events: none;
+  }
+  .spine-overlay span { writing-mode: vertical-rl; letter-spacing: .5em; color: var(--gold);
+    font-size: 15px; text-shadow: 0 1px 1px rgba(0,0,0,.6); }
+
+  .sheen { position: absolute; inset: 0; pointer-events: none; opacity: 0; z-index: 4;
+    background: linear-gradient(105deg, transparent 42%, rgba(255,255,255,.4) 50%, transparent 58%);
+    animation: sheen 1.1s ease-out; }
+  @keyframes sheen { 0% { opacity: 0; transform: translateX(28%); } 40% { opacity: .7; } 100% { opacity: 0; transform: translateX(-28%); } }
+  .cast { position: absolute; inset: 0; pointer-events: none; opacity: 0;
+    background: linear-gradient(to right, rgba(40,25,5,.35), rgba(40,25,5,0) 70%);
+    animation: cast 1.1s ease-out; }
+  @keyframes cast { 0% { opacity: .55; } 60% { opacity: .25; } 100% { opacity: 0; } }
+  .stage.closing .cast { animation: cast-close 1.1s forwards; }
+  @keyframes cast-close { 0% { opacity: 0; } 100% { opacity: .55; } }
+
+  @keyframes paper-open {
+    0%   { transform: rotateY(0deg);    box-shadow: 0 0 0 rgba(40,25,5,0);        animation-timing-function: ease-out; }
+    18%  { transform: rotateY(-30deg);  box-shadow: 0 12px 30px rgba(40,25,5,.35); animation-timing-function: cubic-bezier(.4,.1,.4,1); }
+    55%  { transform: rotateY(-110deg); box-shadow: 0 18px 40px rgba(40,25,5,.4);  animation-timing-function: cubic-bezier(.3,.4,.3,1); }
+    82%  { transform: rotateY(-162deg); box-shadow: 0 10px 26px rgba(40,25,5,.3);  animation-timing-function: ease-out; }
+    100% { transform: rotateY(-180deg); box-shadow: 0 0 0 rgba(40,25,5,0); }
+  }
+  @keyframes paper-close {
+    0%   { transform: rotateY(-180deg); box-shadow: 0 0 0 rgba(40,25,5,0);        animation-timing-function: ease-out; }
+    20%  { transform: rotateY(-162deg); box-shadow: 0 10px 26px rgba(40,25,5,.3);  animation-timing-function: cubic-bezier(.3,.4,.3,1); }
+    50%  { transform: rotateY(-110deg); box-shadow: 0 18px 40px rgba(40,25,5,.4);  animation-timing-function: cubic-bezier(.4,.1,.4,1); }
+    85%  { transform: rotateY(-30deg);  box-shadow: 0 12px 30px rgba(40,25,5,.35); animation-timing-function: ease-out; }
+    100% { transform: rotateY(0deg);    box-shadow: 0 0 0 rgba(40,25,5,0); }
+  }
+
+  .page-inner { padding: 54px 56px 46px; height: 100%; overflow-y: auto; overflow-x: hidden; }
+
+  /* ---------- 刊头 / 目录 / 关于 / 归档 ---------- */
+  .masthead { text-align: center; position: relative;
+    border-bottom: 3px double var(--ink-soft); padding-bottom: 26px; margin-bottom: 30px; }
+  .masthead h1 { font-size: 48px; letter-spacing: .35em; margin-right: -.35em; }
+  .masthead .tagline { color: var(--ink-soft); letter-spacing: .25em; margin-top: 10px; font-size: 14px; }
+  .masthead .meta { color: var(--faint); font-size: 12px; letter-spacing: .15em; margin-top: 14px; }
+  .seal { position: absolute; right: 4px; top: 0; width: 44px; height: 44px;
+    background: var(--seal); color: #f6efe0; display: grid; place-items: center;
+    font-size: 24px; border-radius: 6px; transform: rotate(6deg);
+    box-shadow: 0 2px 6px rgba(0,0,0,.3); opacity: .9; }
+  nav { display: flex; justify-content: center; gap: 34px; margin-top: 20px; }
+  nav a { color: var(--ink-soft); text-decoration: none; letter-spacing: .2em; font-size: 14px;
+    border-bottom: 1px solid transparent; padding-bottom: 3px; transition: color .2s, border-color .2s; }
+  nav a:hover { color: var(--ink); border-color: var(--seal); }
+  .section-title { display: flex; align-items: baseline; gap: 14px; margin: 34px 0 18px; }
+  .section-title h2 { font-size: 20px; letter-spacing: .25em; }
+  .section-title .rule { flex: 1; border-bottom: 1px solid var(--paper-edge); transform: translateY(-4px); }
+  .section-title .en { color: var(--faint); font-size: 11px; letter-spacing: .2em; }
+  .toc-entry { display: block; width: 100%; text-align: left; background: none; border: 0;
+    font-family: inherit; color: inherit; cursor: pointer; padding: 15px 6px;
+    border-bottom: 1px solid var(--paper-edge); transition: background .2s, transform .2s; }
+  .toc-entry:hover { background: rgba(163,58,42,.05); transform: translateX(4px); }
+  .toc-line { display: flex; align-items: baseline; gap: 10px; }
+  .toc-title { font-size: 18px; letter-spacing: .06em; }
+  .toc-leader { flex: 1; border-bottom: 1px dotted var(--faint); transform: translateY(-4px); }
+  .toc-date { color: var(--faint); font-size: 12px; letter-spacing: .1em; white-space: nowrap; }
+  .toc-sub { display: flex; gap: 10px; align-items: center; margin-top: 7px; }
+  .toc-tag { font-size: 10px; color: var(--seal); border: 1px solid currentColor; border-radius: 3px;
+    padding: 1px 6px; letter-spacing: .1em; }
+  .toc-excerpt { color: var(--ink-soft); font-size: 13px; }
+  .about-box { border: 1px solid var(--paper-edge); background: rgba(255,255,255,.35);
+    padding: 20px 22px; border-radius: 4px; }
+  .about-box p { font-size: 14px; line-height: 1.95; text-align: justify; text-indent: 2em; }
+  .about-box .sig { text-align: right; color: var(--ink-soft); margin-top: 10px; letter-spacing: .2em; }
+  .archive { list-style: none; columns: 2; gap: 40px; font-size: 13px; }
+  .archive li { display: flex; justify-content: space-between; border-bottom: 1px dotted var(--paper-edge);
+    padding: 6px 2px; color: var(--ink-soft); break-inside: avoid; }
+  .archive .count { color: var(--faint); }
+  footer { margin-top: 44px; padding-top: 18px; border-top: 3px double var(--ink-soft);
+    text-align: center; color: var(--faint); font-size: 12px; letter-spacing: .15em; line-height: 2; }
+
+  /* ---------- 文章排版 ---------- */
+  .runhead { font-size: 11px; letter-spacing: .3em; color: var(--faint); text-align: center; margin-bottom: 22px; }
+  .slot-right h1 { font-size: 34px; letter-spacing: .1em; text-align: center; margin-bottom: 12px; }
+  .slot-right .meta { text-align: center; color: var(--faint); font-size: 13px; letter-spacing: .12em; margin-bottom: 28px; }
+  .slot-right .content p { font-size: 18px; line-height: 2.05; text-align: justify; text-indent: 2em; margin-bottom: 1em; }
+  .slot-right .content p:first-of-type::first-letter { font-size: 2.6em; float: left; line-height: 1;
+    margin: 4px 8px 0 0; color: var(--seal); }
+  .slot-right .content h2 { font-size: 20px; letter-spacing: .15em; margin: 1.6em 0 .8em;
+    border-left: 3px solid var(--seal); padding-left: 10px; clear: both; }
+  .slot-right .content .quote { text-indent: 0; text-align: center; color: var(--ink-soft); }
+  .slot-right .content figure { margin: 1.6em 0; }
+  .slot-right .content figure img { display: block; width: 100%; height: auto; border: 8px solid #fff;
+    border-radius: 2px; box-shadow: 0 6px 18px rgba(60,40,10,.3); filter: sepia(.15) saturate(.95); }
+  .slot-right .content figcaption { text-align: center; color: var(--faint); font-size: 12px;
+    letter-spacing: .1em; margin-top: 8px; }
+  .slot-right .content figure.float { float: right; width: 46%; margin: .4em 0 1em 1.4em; }
+  .slot-right .content figure.float img { border-width: 6px; }
+  .slot-right .content::after { content: ""; display: block; clear: both; }
+  .folio { text-align: center; color: var(--faint); font-size: 12px; letter-spacing: .2em; margin-top: 28px; }
+  .bar { display: flex; justify-content: space-between; margin-top: 22px; padding-top: 14px;
+    border-top: 1px solid var(--paper-edge); }
+  .bar button { font-family: inherit; font-size: 13px; letter-spacing: .1em; cursor: pointer;
+    background: none; border: 1px solid var(--ink-soft); color: var(--ink-soft); border-radius: 999px;
+    padding: 6px 16px; transition: background .2s, color .2s; }
+  .bar button:hover { background: var(--ink-soft); color: var(--paper); }
+
+  /* ---------- 目录源（克隆母版；窄屏作合拢页） ---------- */
+  .index-source { display: none; }
+  .index-source .paper-wrap { background: var(--paper); background-image: var(--noise);
+    border-radius: 5px; box-shadow: 0 26px 50px rgba(20,10,0,.45);
+    height: var(--page-h); overflow-y: auto; overflow-x: hidden; }
+
+  @media (max-width: 760px) {
+    .scene { width: var(--page-w); }
+    .marginalia { display: none; }
+    .stage { display: none; }
+    .index-source { display: block; width: var(--page-w); }
+    body.reading .index-source { display: none; }
+    body.reading .stage { display: block; width: var(--page-w); transform: none; }
+    body.reading .stage .base-left, body.reading .stage .spine-overlay, body.reading .stage .leaf { display: none; }
+    body.reading .stage .slot-right { left: 0; border-radius: 5px; }
+    .page-inner { padding: 30px 24px; }
+    .masthead h1 { font-size: 32px; }
+    .archive { columns: 1; }
+  }
+</style>
+</head>
+<body>
+  <div class="scene">
+    <div class="marginalia" aria-hidden="true">
+      <div class="scrap note1">眉批：慢即是快。<br>—— 读《慢读》有感</div>
+      <div class="coffee"></div>
+      <div class="pencil"></div>
+      <div class="scrap note2">本月在读<br>《纸的温度》<br>《木工手记》</div>
+      <div class="bookplate">拾纸集<br>藏书<br>No.0001</div>
+    </div>
+
+    <div class="stage" id="stage">
+      <div class="base-left"></div>
+      <div class="slot-right" id="pageRight">
+        <div class="page-inner">
+          <div class="runhead">拾纸集</div>
+          <h1 id="rTitle"></h1>
+          <div class="meta" id="rMeta"></div>
+          <div class="content" id="rContent"></div>
+          <div class="folio" id="rFolio"></div>
+          <div class="bar">
+            <button id="rBack">‹ 合上</button>
+            <button id="rNext">下一篇 ›</button>
+          </div>
+        </div>
+        <div class="cast" id="cast"></div>
+      </div>
+      <div class="leaf" id="leaf">
+        <div class="face front"><div class="page-inner" id="indexFront"></div></div>
+        <div class="face back"><div class="page-inner" id="indexBack"></div></div>
+        <div class="sheen" id="sheen"></div>
+      </div>
+      <div class="spine-overlay"><span>拾纸集</span></div>
+    </div>
+
+    <div class="index-source" id="indexSource">
+      <div class="paper-wrap">
+        <div class="page-inner">
+          <header class="masthead">
+            <div class="seal">拾</div>
+            <h1>拾纸集</h1>
+            <div class="tagline">把日子写在纸上</div>
+            <div class="meta">拾纸人 · 个人博客 · 自二〇二六年秋</div>
+            <nav>
+              <a href="#posts">文章</a><a href="#about">关于</a><a href="#archive">归档</a>
+            </nav>
+          </header>
+          <section id="posts">
+            <div class="section-title"><h2>目录</h2><div class="rule"></div><span class="en">CONTENTS</span></div>
+            <div id="toc"></div>
+          </section>
+          <section id="about">
+            <div class="section-title"><h2>关于</h2><div class="rule"></div><span class="en">ABOUT</span></div>
+            <div class="about-box">
+              <p>写代码的人，偶尔也想摸一摸纸。这里不追热点，不赶进度，只把读过、想过、做过的东西，慢慢记下来。</p>
+              <p>相信慢一点的东西更耐读：一本纸书、一段手写、一个不急着上线的想法。若你也在屏幕前坐得太久，欢迎在这里翻几页。</p>
+              <div class="sig">—— 拾纸人</div>
+            </div>
+          </section>
+          <section id="archive">
+            <div class="section-title"><h2>归档</h2><div class="rule"></div><span class="en">ARCHIVE</span></div>
+            <ul class="archive" id="archiveList"></ul>
+          </section>
+          <footer>
+            拾纸集 · 以纸为媒<br>
+            本站文字皆为原创 · 转载请注明出处
+          </footer>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+(function () {
+  var posts = [
+    { title: '纸的温度：我的慢读一年', date: '2026-11-08', tag: '阅读',
+      excerpt: '十页乘以三百六十五，慢是一种复利。',
+      body: [
+        '去年秋天，我把手机里的阅读软件卸了，换回一摞纸书。朋友笑我倒退，我却觉得是回到岸上。',
+        '<figure><img src="img/hero.png" alt="窗边书桌上的旧书与钢笔"><figcaption>图 1 · 窗边的书桌，纸与笔都还在老地方</figcaption></figure>',
+        '<h2>一 · 缘起</h2>',
+        '起因很小：一次体检，医生说我用眼过度。我回想自己每天盯屏幕十小时，读的东西却记不住多少，忽然觉得亏。',
+        '不是屏幕不好，是屏幕太快。信息流一条接一条，眼睛在滑，脑子在漏。读得越多，忘得越多。',
+        '于是我给自己换了介质：纸。慢一点，重一点，读一页是一页。',
+        '<h2>二 · 十页规矩</h2>',
+        '规矩简单：每天只读十页，读完就停。不许贪多，也不许补课。',
+        '<figure class="float"><img src="img/night.png" alt="台灯下夜读"><figcaption>图 2 · 夜读只留一盏灯</figcaption></figure>',
+        '头一周最难。手总想去摸手机，十页读完心里空落落的，像没吃饱。但第二周开始，那十页变得清晰起来。',
+        '因为读得少，所以每一页都过了脑子；因为停了，所以合上书还在想。记忆反而比刷十屏牢靠。',
+        '灯下那十页，是一天里唯一不被打扰的时间。世界再吵，灯圈里是安静的。',
+        '<h2>三 · 纸痕</h2>',
+        '纸书允许留痕。折角、划线、夹一片叶子，都是我和这本书的私交。',
+        '<figure><img src="img/page.png" alt="带批注与折角的旧书页"><figcaption>图 3 · 批注与折角，是纸替我记的日记</figcaption></figure>',
+        '多年后重读，最先认出的往往不是文字，而是那道折痕——它告诉我，当年的我曾在这里停下来，想了很久。',
+        '屏幕也留痕，但那痕迹属于系统：浏览记录、缓存、同步。精确，却不动人。纸的痕迹属于手，所以动人。',
+        '<h2>四 · 手艺与耐心</h2>',
+        '慢读久了，我发现它和手艺是同一件事：不追求一次成型，追求每一次下刀心里有数。',
+        '木匠顺着纹理刨板，读者顺着章节进书。逆着来，都会起毛刺。',
+        '我把好的阅读看作好的榫卯：不用胶水，也能咬合得住。读进去的东西，长在自己身上。',
+        '<h2>结语</h2>',
+        '一年下来，十页乘以三百六十五，是三千六百页，够读透十几本好书。慢，原来是一种复利。',
+        '合上书，掌心还留着纸的余温。那温度很浅，却足以让人相信：有些东西，是握得住的。',
+        '<p class="quote">—— 完 ——</p>'
+      ] },
+    { title: '把博客装进一本纸书', date: '2026-11-02', tag: '随笔',
+      excerpt: '如果博客不是信息流，而是一册可以翻的书。',
+      body: [
+        '信息流是滑动的，纸书是翻动的。一个追求无尽，一个讲究停顿。我常想，博客能不能后者一点：有目录、有页码、有翻过去就回不去的仪式感。',
+        '于是有了这个页面。它不加载评论数，不显示阅读量，只把文章排成目录，点开像掀开一页纸。读完了，合上，回到目录，再挑下一篇。',
+        '慢，是它唯一的优点，也是我想保留的全部。'
+      ] },
+    { title: '慢读', date: '2026-10-21', tag: '阅读',
+      excerpt: '一天读十页，胜过一天刷十屏。',
+      body: [
+        '今年给自己定了个规矩：每天只读十页纸书，读完就停。起初难受，手总想去摸手机；一个月后，竟开始期待那十页。',
+        '慢读的好处不在数量，在于记得住。因为读得少，所以每一页都过了脑子；因为停了，所以合上书还在想。',
+        '十页很少，但一年是三千六百页，够读透十几本好书。慢，原来是一种复利。'
+      ] },
+    { title: '代码也是手艺', date: '2026-10-05', tag: '技术',
+      excerpt: '写程序和做木工，共享同一种耐心。',
+      body: [
+        '木匠刨一块板，要顺着纹理；写代码改一个模块，要顺着它原有的结构。逆着来，都会起毛刺。',
+        '手艺人不追求一次成型，追求的是每一次下刀都心里有数。重构不是推倒，是一点点刨平，直到接缝摸不出高低。',
+        '我把好的提交看作好的榫卯：不用胶水，也能咬合得住。'
+      ] },
+    { title: '夜航与灯', date: '2026-09-18', tag: '生活',
+      excerpt: '深夜写字的人，都给自己留着一盏灯。',
+      body: [
+        '夜里写东西，世界安静得只剩键盘和台灯。光落在纸面上，圈出一小块暖黄，像船舱里的灯，四周都是海。',
+        '白天属于别人，深夜才属于自己。那些不成形的想法，只有在灯下才肯慢慢靠岸。',
+        '写完合上本子，关灯。海还在，但船已经停稳了。'
+      ] }
+  ];
+
+  var toc = document.getElementById('toc');
+  posts.forEach(function (p, i) {
+    var b = document.createElement('button');
+    b.className = 'toc-entry';
+    b.dataset.i = i;
+    b.innerHTML =
+      '<div class="toc-line"><span class="toc-title">' + p.title + '</span>' +
+      '<span class="toc-leader"></span><span class="toc-date">' + p.date + '</span></div>' +
+      '<div class="toc-sub"><span class="toc-tag">' + p.tag + '</span>' +
+      '<span class="toc-excerpt">' + p.excerpt + '</span></div>';
+    toc.appendChild(b);
+  });
+  var months = {};
+  posts.forEach(function (p) { var m = p.date.slice(0, 7); months[m] = (months[m] || 0) + 1; });
+  var al = document.getElementById('archiveList');
+  Object.keys(months).sort().reverse().forEach(function (m) {
+    var li = document.createElement('li');
+    li.innerHTML = '<span>' + m.replace('-', ' 年 ') + ' 月</span><span class="count">' + months[m] + ' 篇</span>';
+    al.appendChild(li);
+  });
+
+  var source = document.getElementById('indexSource');
+  ['indexFront', 'indexBack'].forEach(function (id) {
+    var c = document.getElementById(id);
+    c.innerHTML = source.querySelector('.page-inner').innerHTML;
+    c.querySelectorAll('[id]').forEach(function (el) { el.removeAttribute('id'); });
+  });
+
+  var scene = document.querySelector('.scene');
+  function fit() {
+    var s = Math.min(1, (innerWidth - 24) / scene.offsetWidth, (innerHeight - 24) / scene.offsetHeight);
+    scene.style.transform = 'scale(' + s + ')';
+  }
+  window.addEventListener('resize', fit);
+  fit();
+
+  var stage = document.getElementById('stage');
+  var leaf = document.getElementById('leaf');
+  var idx = 0;
+  function restart(el) { el.style.animation = 'none'; void el.offsetWidth; el.style.animation = ''; }
+  function openPost(i) {
+    if (stage.classList.contains('closing')) return;
+    idx = i;
+    var p = posts[i];
+    document.getElementById('rTitle').textContent = p.title;
+    document.getElementById('rMeta').textContent = p.date + ' · ' + p.tag;
+    document.getElementById('rContent').innerHTML = p.body.map(function (t) { return t.charAt(0) === '<' ? t : '<p>' + t + '</p>'; }).join('');
+    document.getElementById('rFolio').textContent = '· ' + (i + 1) + ' / ' + posts.length + ' ·';
+    document.getElementById('rNext').style.visibility = (i === posts.length - 1) ? 'hidden' : 'visible';
+    stage.classList.add('open');
+    document.body.classList.add('reading');
+    restart(leaf); restart(document.getElementById('sheen')); restart(document.getElementById('cast'));
+    document.getElementById('pageRight').scrollTop = 0;
+    document.querySelector('.face.front').scrollTop = 0;
+  }
+  function closeReader() {
+    if (!stage.classList.contains('open') || stage.classList.contains('closing')) return;
+    stage.classList.add('closing');
+    var finalized = false;
+    var finalize = function () {
+      if (finalized) return;
+      finalized = true;
+      stage.classList.remove('open', 'closing');
+      document.body.classList.remove('reading');
+    };
+    leaf.addEventListener('animationend', function h(e) {
+      if (e.animationName === 'paper-close') { leaf.removeEventListener('animationend', h); finalize(); }
+    });
+    setTimeout(finalize, 1200);
+  }
+  document.getElementById('rBack').addEventListener('click', closeReader);
+  document.getElementById('rNext').addEventListener('click', function () { openPost(idx + 1); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeReader(); });
+  document.addEventListener('click', function (e) {
+    var t = e.target.closest('.toc-entry');
+    if (t) openPost(+t.dataset.i);
+  });
+})();
+</script>
+</body>
+</html>
